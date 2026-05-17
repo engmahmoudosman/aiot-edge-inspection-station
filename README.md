@@ -20,19 +20,45 @@ The system runs as three cooperating processes: a **LiDAR server** that reads th
 
 | Milestone | Launcher | What it does | Requires Hailo? |
 |-----------|----------|--------------|-----------------|
-| **M1** — NPU Detection + LiDAR Fusion | `sensor_fusion.py` | YOLOv6n @ ~28 FPS on Hailo-8L; distance overlaid on every bounding box; real-time LiDAR polar map | Yes |
-| **M2** — LiDAR Proximity Gate | `sensor_fusion_m2.py` | LiDAR triggers camera snapshots on entry; stateful cooldown prevents re-triggering | No |
-| **M3** — Face Recognition + Dashboard | `sensor_fusion_m3.py` | Adds face recognition (dlib), Flask web dashboard, Telegram alerts for unknown visitors | No |
+| **M1** — NPU Detection + LiDAR Fusion | `src/sensor_fusion.py` | YOLOv6n @ ~28 FPS on Hailo-8L; distance overlaid on every bounding box; real-time LiDAR polar map | Yes |
+| **M2** — LiDAR Proximity Gate | `src/sensor_fusion_m2.py` | LiDAR triggers camera snapshots on entry; stateful cooldown prevents re-triggering | No |
+| **M3** — Face Recognition + Dashboard | `src/sensor_fusion_m3.py` | Adds face recognition (dlib), Flask web dashboard, Telegram alerts for unknown visitors | No |
 
 > **M3 is the complete final system.** M1 demonstrates hardware acceleration value. M2 is the LiDAR-only fallback.
 
 ---
 
+## Hardware Setup
+
+![Hardware Setup](images/hardware.jpg)
+
+*Hokuyo LiDAR (top) · RPi Camera Module (middle) · Raspberry Pi 5 + Hailo-8L M.2 HAT (base)*
+
+---
+
 ## Screenshots
 
-| Dashboard | Image Capture |
-|-----------|---------------------|
-| ![Dashboard](images/dashboard2.png) | ![Capture](images/image_capture.png) |
+<!-- | Web Dashboard | Face Recognition |
+|---------------|-----------------|
+| ![Dashboard](images/dashboard2.png) | ![Face Recognition](images/Face_recognition.jpg) |
+
+| Telegram — Desktop | Telegram — Mobile |
+|--------------------|-------------------|
+| ![Telegram Desktop](images/telegram_desktop_ss.jpg) | ![Telegram Mobile](images/Telegram_phone_ss.png) | -->
+
+
+
+### Web Dashboard
+<img src="images/dashboard2.png" width="400"/>
+
+### Face Recognition
+<img src="images/Face_recognition.jpg" width="400"/>
+
+### Telegram — Desktop
+<img src="images/telegram_desktop_ss.jpg" width="400"/>
+
+### Telegram — Mobile
+<img src="images/Telegram_phone_ss.png" width="400"/>
 
 ---
 
@@ -61,8 +87,8 @@ sudo apt install python3-venv python3-pip
 ### 2. Clone the repository
 
 ```bash
-git clone https://github.com/engmahmoudosman/aiot-edge-inspection-station.git
-cd aiot-edge-inspection-station
+git clone https://github.com/<your-username>/<repo-name>.git
+cd <repo-name>
 ```
 
 ### 3. Create a virtual environment
@@ -126,15 +152,11 @@ See [Creating a Telegram bot](https://core.telegram.org/bots/tutorial) for how t
 
 **LiDAR check** (no camera or Hailo needed):
 ```bash
-# Check USB device
-ls /dev/ttyACM*        # expect /dev/ttyACM0
+ls /dev/ttyACM*                                  # expect /dev/ttyACM0
+sudo usermod -aG dialout $USER && newgrp dialout  # if not in dialout group
 
-# Add yourself to the dialout group if needed
-sudo usermod -aG dialout $USER && newgrp dialout
-
-# Launch LiDAR viewer
-python lidar_server.py --lidar hokuyo &
-python lidar_cloud.py
+python src/lidar_server.py --lidar hokuyo &
+python src/lidar_cloud.py
 ```
 
 **Camera check:**
@@ -154,7 +176,7 @@ hailortcli fw-control identify    # shows firmware version if detected
 
 ```bash
 source ~/hailo-apps/setup_env.sh
-python sensor_fusion.py
+python src/sensor_fusion.py
 ```
 
 The display shows a camera feed with bounding boxes and distances on the left, and a LiDAR polar map on the right.
@@ -175,7 +197,7 @@ Press `Q` or `Ctrl+C` to stop cleanly.
 No Hailo or face recognition required.
 
 ```bash
-python sensor_fusion_m2.py --sensor hokuyo --proximity 1.5
+python src/sensor_fusion_m2.py --sensor hokuyo --proximity 1.5
 ```
 
 The LiDAR monitors the entry zone. When something enters within the proximity threshold, the camera captures a snapshot. A cooldown prevents re-triggering on stationary objects.
@@ -194,14 +216,13 @@ Options:
 
 ```bash
 mkdir -p known_faces/<person_name>
-# Copy 3–5 clear face images into that folder
+# Copy 3–5 clear face images into that folder, then run:
 python -c "
-import face_recognition, pickle, os, numpy as np
+import face_recognition, pickle
 from pathlib import Path
 encs = {}
 for person in Path('known_faces').iterdir():
-    imgs = [face_recognition.load_image_file(str(p))
-            for p in person.glob('*.jpg')]
+    imgs = [face_recognition.load_image_file(str(p)) for p in person.glob('*.jpg')]
     vecs = [face_recognition.face_encodings(i)[0] for i in imgs
             if face_recognition.face_encodings(i)]
     if vecs:
@@ -216,7 +237,7 @@ print('Saved encodings.pickle')
 #### Run
 
 ```bash
-python sensor_fusion_m3.py --sensor hokuyo --proximity 1.5
+python src/sensor_fusion_m3.py --sensor hokuyo --proximity 1.5
 ```
 
 Open the web dashboard at `http://<pi-ip>:5000`
@@ -232,9 +253,13 @@ Options:
 
 | Visitor type | Action |
 |-------------|--------|
-| Known face | Silent log entry |
+| Known face | Silent log entry + optional Telegram confirmation |
 | Unknown face | Photo + alert to Telegram |
 | No face (motion only) | Motion alert to Telegram |
+
+**Example alerts received on Telegram:**
+
+![Telegram Desktop](images/telegram_desktop_ss.jpg)
 
 ---
 
@@ -282,7 +307,7 @@ display:
 `band_min_px` / `band_max_px` define the horizontal strip in the camera image where the LiDAR scan plane crosses. This depends on sensor mounting height.
 
 1. Place a flat object at exactly 1 m in front of the station.
-2. Run `python sensor_fusion.py`.
+2. Run `python src/sensor_fusion.py`.
 3. If no distance appears next to the bounding box, widen the band (e.g., `200`–`340`).
 4. Narrow it back until distance readings are consistent.
 
@@ -294,32 +319,37 @@ display:
 
 ```bash
 # Terminal 1
-python sensor_fusion.py
+python src/sensor_fusion.py
 
 # Terminal 2
-python benchmark_fps.py --mode hailo --duration 30
+python src/benchmark_fps.py --mode hailo --duration 30
 ```
 
 ### CPU-only FPS (standalone, requires onnxruntime)
 
 ```bash
 pip install onnxruntime
-python benchmark_fps.py --mode cpu --duration 30 --onnx-path yolov6n.onnx
+python src/benchmark_fps.py --mode cpu --duration 30 --onnx-path yolov6n.onnx
 ```
 
-### LiDAR distance accuracy (run while `lidar_server.py` is active)
+### LiDAR distance accuracy
 
 ```bash
 # Terminal 1
-python lidar_server.py --lidar hokuyo
+python src/lidar_server.py --lidar hokuyo
 
 # Terminal 2 — repeat at each test distance
 for dist in 0.5 1.0 1.5 2.0 2.5; do
-    python distance_accuracy_test.py --distance $dist
+    python src/distance_accuracy_test.py --distance $dist
 done
 ```
 
-Output is formatted for direct copy-paste into the paper tables.
+### Shell benchmark scripts
+
+```bash
+bash scripts/benchmark_cpu.sh   # CPU-only YOLOv8s baseline
+bash scripts/benchmark_npu.sh   # Hailo NPU with hailortcli monitor
+```
 
 ---
 
@@ -345,30 +375,38 @@ Detections are written to a daily rotating CSV:
 
 ```
 inspection_station/
-├── sensor_fusion.py                  # M1 launcher (Hailo + LiDAR)
-├── sensor_fusion_m2.py               # M2 launcher (LiDAR gate)
-├── sensor_fusion_m3.py               # M3 launcher (face recog + dashboard)
-├── lidar_server.py                   # SCIP 2.0 serial driver → UDP JSON
-├── detection_with_lidar.py           # Hailo GStreamer pipeline + LiDAR fusion
-├── detection_pipeline_with_lidar.py  # GStreamer base class
-├── inspection_dashboard.py           # LiDAR polar map renderer
-├── inspection_logger.py              # Thread-safe CSV event logger
-├── dashboard.py                      # Flask web dashboard (M3)
-├── lidar_cloud.py                    # 360° point cloud viewer
-├── benchmark_fps.py                  # FPS and CPU usage benchmarker
-├── distance_accuracy_test.py         # LiDAR accuracy measurement tool
-├── monitor_system.py                 # CPU/RAM profiler
-├── ais.sh                            # Quick M3 launch script
-├── benchmark_cpu.sh                  # CPU benchmark shell script
-├── benchmark_npu.sh                  # NPU benchmark shell script
+├── README.md
+├── requirements.txt
 ├── config.yaml                       # All tunable system parameters
 ├── config.json.example               # Telegram credentials template
-├── requirements.txt                  # Python dependencies
 ├── .gitignore
-└── images/
+│
+├── src/                              # Python source files
+│   ├── sensor_fusion.py              # M1 launcher — Hailo NPU + LiDAR
+│   ├── sensor_fusion_m2.py           # M2 launcher — LiDAR proximity gate
+│   ├── sensor_fusion_m3.py           # M3 launcher — face recognition + dashboard
+│   ├── lidar_server.py               # SCIP 2.0 serial driver → UDP JSON
+│   ├── detection_with_lidar.py       # Hailo GStreamer pipeline + LiDAR fusion
+│   ├── detection_pipeline_with_lidar.py  # GStreamer base class
+│   ├── inspection_dashboard.py       # LiDAR polar map renderer
+│   ├── inspection_logger.py          # Thread-safe CSV event logger
+│   ├── dashboard.py                  # Flask web dashboard (M3)
+│   ├── lidar_cloud.py                # 360° point cloud viewer
+│   ├── benchmark_fps.py              # FPS and CPU usage benchmarker
+│   ├── distance_accuracy_test.py     # LiDAR accuracy measurement
+│   ├── monitor_system.py             # CPU/RAM profiler
+│   └── record_results.py             # Interactive benchmark recorder
+│
+├── scripts/                          # Shell utility scripts
+│   ├── ais.sh                        # Quick M3 launch shortcut
+│   ├── benchmark_cpu.sh              # CPU-only YOLOv8s baseline
+│   └── benchmark_npu.sh              # Hailo NPU benchmark with hailortcli
+│
+└── images/                           # Figures and screenshots
     ├── architecture.png
     ├── dev_milestones.png
     ├── dashboard.png
+    ├── dashboard2.png
     └── image_capture.png
 ```
 
