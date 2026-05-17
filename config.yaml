@@ -1,0 +1,37 @@
+lidar:
+  sensor: hokuyo           # hokuyo | rplidar
+  udp_port: 5001
+
+camera:
+  input: rpi               # rpi | /dev/video0 | file path
+  hfov_deg: 66.3           # horizontal field of view in degrees (Pi camera)
+
+model:
+  # Path resolved relative to ~; auto-downloaded on first run if absent.
+  hef_path: "~/hailo-apps/resources/models/hailo8l/yolov6n.hef"
+  score_threshold: 0.35
+  iou_threshold: 0.45
+
+fusion:
+  # Vertical pixel band (out of 480-high frame) in which LiDAR rays are matched
+  # to camera detections.  Calibrate by placing an object at a known distance
+  # and tightening the range until distance reads correctly.
+  # Default: ~3 inches above camera mounting plane, works for side-by-side desk setup.
+  band_min_px: 250
+  band_max_px: 290
+  ema_alpha: 0.4           # EMA smoothing: 1.0 = no smoothing, 0.0 = no update
+  ema_expire_sec: 1.0
+
+safety:
+  enable_alerts: true
+  distance_threshold_m: 1.5
+
+logging:
+  enable: true
+  output_dir: ./logs
+
+display:
+  window_title: "Inspection Station"
+  map_size_px: 640         # width AND height of the LiDAR polar map pane
+  max_range_m: 4.0         # display range for the map (metres)
+  map_scale_px_per_m: 100  # zoom: pixels per metre

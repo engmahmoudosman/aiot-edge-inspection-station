@@ -1,0 +1,52 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Inspection Station — Python dependencies
+#
+# Quick setup (Raspberry Pi 5, after sudo apt install hailo-all):
+#
+#   python3 -m venv venv --system-site-packages
+#   source venv/bin/activate
+#   pip install -r requirements.txt
+#
+# The --system-site-packages flag is required so the venv can reach
+# hailo_platform, hailo_apps, GStreamer bindings, and picamera2,
+# which are installed by hailo-all via apt and are NOT on PyPI.
+#
+# For Milestone 3 face recognition, follow the extra steps below.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Core ──────────────────────────────────────────────────────────────────────
+pyserial>=3.5           # Hokuyo SCIP 2.0 serial communication
+pyyaml>=6.0             # config.yaml parsing
+numpy>=1.24             # array ops, image buffers
+opencv-python>=4.8      # video capture, drawing, imshow
+                        # use opencv-python-headless if running headless (no GUI)
+setproctitle>=1.3       # readable process names in htop/ps
+psutil>=5.9             # CPU / RAM monitoring (monitor_system.py)
+
+# ── Networking / alerts ───────────────────────────────────────────────────────
+requests>=2.31          # Telegram Bot HTTP API (Milestone 3)
+flask>=3.0              # Web dashboard on port 5000 (Milestone 3)
+
+# ── Optional — CPU-only inference benchmark ───────────────────────────────────
+# onnxruntime>=1.17     # Uncomment to run: python benchmark_fps.py --mode cpu
+                        # Needs a .onnx model file (yolov6n.onnx)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Milestone 3 — Face recognition (dlib + face_recognition)
+#
+# dlib must be compiled from source on the Pi (30–60 min first time).
+# Run these commands AFTER activating the venv:
+#
+#   sudo apt install -y cmake build-essential libopenblas-dev liblapack-dev \
+#                       libx11-dev libgtk-3-dev
+#   pip install dlib
+#   pip install face_recognition
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# NOT on PyPI — installed by:  sudo apt install hailo-all
+#
+#   hailo_platform          Hailo runtime SDK
+#   hailo_apps              hailo-apps-infra Python wrappers
+#   GStreamer Hailo plugins  hailonet, hailofilter, hailotracker
+#   picamera2               Raspberry Pi camera Python API
+# ─────────────────────────────────────────────────────────────────────────────
